@@ -37,13 +37,13 @@ def _normalize_ad_ts_sid(df, ndays=0):
 
     """
     if 'asof_date' in df.columns:
-        df['asof_date'] = pd.to_datetime(df['asof_date'])
+        df['asof_date'] = pd.to_datetime(df['asof_date'], utc=True)
     else:
-        df['asof_date'] = pd.to_datetime(df['date'])
+        df['asof_date'] = pd.to_datetime(df['date'], utc=True)
         df.drop('date', axis=1, inplace=True)
 
     if 'timestamp' in df.columns:
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
     else:
         df['timestamp'] = df['asof_date'] + pd.Timedelta(days=ndays)
 

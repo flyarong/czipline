@@ -940,9 +940,11 @@ class BlazeLoader(object):
             This can return more data than needed. The in memory reindex will
             handle this.
             """
-            predicate = e[TS_FIELD_NAME] < upper_dt
+            # # 修复时区
+            predicate = e[TS_FIELD_NAME] < upper_dt.tz_localize(None)
             if lower is not None:
-                predicate &= e[TS_FIELD_NAME] >= lower
+                # # 修复时区
+                predicate &= e[TS_FIELD_NAME] >= lower.tz_localize(None)
 
             return odo(e[predicate][colnames], pd.DataFrame, **odo_kwargs)
 

@@ -9,7 +9,7 @@
 
 #==============================设置PATH=======================================#
 # 在所在的python环境运行 echo $PATH，拷贝设置PATH环境变量
-PATH=/home/ldf/anaconda3/envs/zipline/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+PATH=/home/ldf/anaconda3/envs/zipline23/bin:/home/ldf/anaconda3/bin:/home/ldf/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 
 #================================实时任务=======================================#
 # 24小时财经新闻（每分钟执行一次）

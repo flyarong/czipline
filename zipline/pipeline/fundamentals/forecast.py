@@ -34,7 +34,7 @@ def rating_table():
     df = pd.DataFrame(
         {
             'sid':rating_data['股票代码'],
-            'timestamp':pd.to_datetime(rating_data['评级日期']),
+            'timestamp':pd.to_datetime(rating_data['评级日期'], utc=True),
             'rating': rating_data['最新评级'].map(RATING_SCORE).values,
         }
     )

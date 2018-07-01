@@ -42,7 +42,7 @@ def get_preprocessed_dates():
     for col in col_names:
         # 转换日期类型(原始日期值为str类型) -> Timestamp
         if col != 'code':
-            dates[col] = dates[col].map(lambda x: pd.Timestamp(x))
+            dates[col] = dates[col].map(lambda x: pd.Timestamp(x, tz='utc'))
     return dates
 
 
@@ -50,10 +50,11 @@ def normalize_ad_ts_sid(df, preprocessed_dates):
     """完成对实际公告日期的修正，转换股票代码为sid"""
     # 合并前，将report_end_date -> Timestamp
     df['report_end_date'] = df['report_end_date'].map(
-        lambda x: pd.Timestamp(x))
+        lambda x: pd.Timestamp(x,tz='utc'))
     out = df.merge(
-        preprocessed_dates, 
-        how='left', on=['code', 'report_end_date'],
+        preprocessed_dates,
+        how='left',
+        on=['code', 'report_end_date'],
         validate='one_to_one',
     )
     # 存在公告日期
@@ -65,12 +66,14 @@ def normalize_ad_ts_sid(df, preprocessed_dates):
         has_adate,
         'asof_date'] = out.loc[has_adate, 'timestamp'] - pd.Timedelta(days=1)
     # 修正timestamp
-    out.loc[~has_adate, 'timestamp'] = out.loc[~has_adate, 'asof_date'] + pd.Timedelta(days=1)
+    out.loc[
+        ~has_adate,
+        'timestamp'] = out.loc[~has_adate, 'asof_date'] + pd.Timedelta(days=1)
     # 改变类型
     out['sid'] = out['code'].map(lambda x: int(x))
-    out['asof_date'] = pd.to_datetime(out['asof_date'])
-    out['timestamp'] = pd.to_datetime(out['timestamp'])
-    out['report_end_date'] = pd.to_datetime(out['report_end_date'])
+    out['asof_date'] = pd.to_datetime(out['asof_date'], utc=True)
+    out['timestamp'] = pd.to_datetime(out['timestamp'], utc=True)
+    out['report_end_date'] = pd.to_datetime(out['report_end_date'], utc=True)
     # 舍弃code列，保留report_end_date列
     out.drop(['code'], axis=1, inplace=True)
     out.sort_values(['sid', 'report_end_date'], inplace=True)
