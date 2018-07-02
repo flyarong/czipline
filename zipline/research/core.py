@@ -304,7 +304,7 @@ def returns(assets,
     """
     df = prices(assets, start, end, frequency, price_field,
                 symbol_reference_date, periods)
-    return df.pct_change(periods).dropna()
+    return df.pct_change(periods).dropna(how='all')
 
 
 def volumes(assets,
