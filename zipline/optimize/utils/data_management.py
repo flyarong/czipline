@@ -5,15 +5,18 @@ TODO:去掉参数t
 import numpy as np
 import pandas as pd
 
-__all__ = [
-    'check_series_or_dict', 'get_ix', 'time_matrix_locator', 'time_locator',
-    'null_checker', 'non_null_data_args'
-]
-
 
 class NotFoundAsset(Exception):
     """找不到对应资产异常"""
     pass
+
+
+def ensure_series(x):
+    if isinstance(x, pd.Series):
+        return x
+    elif isinstance(x, dict):
+        return pd.Series(x)
+    raise TypeError('输入不是pd.Series或dict')
 
 
 def check_series_or_dict(x, name):
@@ -21,7 +24,7 @@ def check_series_or_dict(x, name):
     is_s = isinstance(x, pd.Series)
     is_d = isinstance(x, dict)
     if not (is_s or is_d):
-        raise TypeError('参数名称{}类型错误。应为pd.Series或者dict'.format(name))
+        raise TypeError('%s不是pd.Series或dict' % name)
 
 
 def get_ix(series, assets):
