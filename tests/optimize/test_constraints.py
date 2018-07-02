@@ -59,7 +59,7 @@ class TestObjectives(unittest.TestCase):
         w = obj.new_weights
         w_s = obj.new_weights_series
         constraints = [
-            con for con in cons_obj.gen_constraints(w, w_s, init_w_s)
+            con for con in cons_obj.to_cvxpy(w, w_s, init_w_s)
         ]
         constraints += [cvx.norm(w, 1) <= 1.5, w <= 0.5, w >= -1.0]
         prob = cvx.Problem(cvx_objective, constraints)
@@ -105,7 +105,7 @@ class TestObjectives(unittest.TestCase):
         #     min_exposures = {'TECH': -0.5, 'CC': -0.25}
         #     max_exposures = {'TECH': 0.5}
         #     NetGroupExposure(labels, min_exposures, max_exposures)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(Exception):
             labels = {'AAPL': 'TECH', 'MSFT': 'TECH', 'TSLA': 'CC', 'GM': 'CC'}
             min_exposures = {'TECH': -0.5, 'CC': -0.25}
             max_exposures = {'TECH': 0.5, 'CC': -0.5}  # 最大值小于最小值
