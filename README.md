@@ -26,9 +26,9 @@ Zipline目前有一个免费的[回测平台](https://www.quantopian.com)，可�
 参考quantopian公司帮助文档，完成`optimize`模块，实现在限定条件下的`MaximizeAlpha`及`TargetWeights`投资组合优化。
 
 ##### 技术分析图
-`AnalysisFigure`绘制OHLCV及常用`MACD`等技术指标图，使用买入卖出信号标注来辅助策略改进。
+使用`cufflinks`包绘制OHLCV及常用`MACD`等技术指标图，添加买入卖出信号标注来辅助改善策略设计。
 <div>
-<img src="/images/mdjt.png" />
+<img src="/images/mdjt.gif" />
 </div>
 
 ##### 提供后台自动提取、转换数据脚本
