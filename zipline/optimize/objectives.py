@@ -5,60 +5,84 @@
     1. 无论是目标权重或当前权重，在特定时刻，单个资产不得同时存在多头与空头权重；
 """
 
-from abc import ABCMeta, abstractmethod
-
+import abc
 import logbook
+
 import numpy as np
 import pandas as pd
-
 import cvxpy as cvx
 
-from .utils import check_series_or_dict, get_ix
+from six import with_metaclass
 
-__all__ = ['ObjectiveBase', 'TargetWeights', 'MaximizeAlpha']
+from .utils import ensure_series
 
 
-class ObjectiveBase(object):
-    """目标基类。子类objective属性代表cvxpy目标对象"""
-    __metaclass__ = ABCMeta
+logger = logbook.Logger('投资组合优化目标')
 
-    def __init__(self, digits=6):
-        self.cash_key = 'cash'
-        self.digits = digits
 
-    def __repr__(self):
-        return "%s(n=%s)" % (self.__class__.__name__, len(self._new_index))
+class BaseObjective(with_metaclass(abc.ABCMeta, object)):
+    """This is a base class and should not be used directly.
+    """
+    def __init__(self):
+        self._make_variable()
 
-    def _make_variable(self, current):
-        if current is None:
+    def _make_variable(self, current_weights=None):
+        '''current_weights：pd.Series[Asset -> float] or dict[Asset -> float]
+        '''
+        if current_weights is None:
             self._new_index = self._old_index
         else:
-            self._new_index = self._old_index.union(current.index).unique()
-        n = len(self._new_index)
-        self._new_weights = cvx.Variable(n, name='new_weights')
+            current_weights = ensure_series(current_weights)
+            self._new_index = self._old_index.union(current_weights.index).unique()
+        
+        self._nvar = len(self._new_index)
+        assert self._nvar > 0, 'Obejctive should have included >= 1 asset!'
+        
+        self._new_weights = cvx.Variable(self._nvar, name='new_weights')
+
+    def __repr__(self):  
+        return "%s(#var=%s)" % (self.__class__.__name__, self._nvar)
 
     @property
     def new_weights(self):
-        """权重表达式"""
+        """
+        权重表达式
+        每调用self._make_variable后自动修改
+        """
         return self._new_weights
 
     @property
     def new_weights_series(self):
-        """权重表达式序列"""
-        n = len(self._new_index)
-        return pd.Series(
-            [self._new_weights[i] for i in range(n)], index=self._new_index)
+        """
+        权重表达式序列
+        每调用self._make_variable后，调用则修改
+        """
+        return pd.Series([self.new_weights[i] for i in range(self._nvar)], 
+                        index=self._new_index)
 
     @property
-    def new_weights_value(self):
-        """多头权重值"""
-        return self.new_weights_series.map(
-            lambda x: round(x.value, self.digits))
+    def new_weights_value(self, d=6):
+        """
+        权重值
+        未进行优化求解返回空值
+        """
+        ret = None
+    
+        after_optimization = self.new_weights[0].value
+        if after_optimization:
+            ret = self.new_weights_series.apply(lambda x: round(x.value, d))
+        
+        return ret
+  
+    
+    @abc.abstractmethod
+    def to_cvxpy(self, current_weights):
+        raise NotImplementedError()
 
 
-class TargetWeights(ObjectiveBase):
+class TargetWeights(BaseObjective):
     """
-    与投资组合目标权重最小距离的ObjectiveBase
+    与投资组合目标权重最小距离的BaseObjective
 
     Parameters
     ----------
@@ -77,21 +101,22 @@ class TargetWeights(ObjectiveBase):
     """
 
     def __init__(self, weights):
-        check_series_or_dict(weights, 'weights')
-        # 目标权重不得包含Nan值
-        self._target_weights = pd.Series(weights).fillna(0.0)
+        self._target_weights = ensure_series(weights)
+        self._target_weights.fillna(0.0, inplace=True) # 因子值不得为Nan
+        
         self._old_index = self._target_weights.index
         super(TargetWeights, self).__init__()
 
-    def to_cvxpy(self, current_weights):
+    def to_cvxpy(self, current_weights=None):
+        '''current_weights：pd.Series[Asset -> float] or dict[Asset -> float]
+        '''             
         self._make_variable(current_weights)
-        self._target_weights = self._target_weights.reindex(
-            self._new_index).fillna(0)
-        err = cvx.sum_squares(self._new_weights - self._target_weights.values)
+        self._target_weights = self._target_weights.reindex(self._new_index).fillna(0)
+        err = cvx.sum_squares(self.new_weights - self._target_weights.values)
         return cvx.Minimize(err)
 
 
-class MaximizeAlpha(ObjectiveBase):
+class MaximizeAlpha(BaseObjective):
     """
     对于一个alpha向量最大化weights.dot(alphas)的目标对象
 
@@ -117,14 +142,16 @@ class MaximizeAlpha(ObjectiveBase):
     """
 
     def __init__(self, alphas):
-        check_series_or_dict(alphas, 'alphas')
-        # 因子值不得为Nan，以0代替
-        self._alphas = pd.Series(alphas).fillna(0.0)
+        self._alphas = ensure_series(alphas)
+        self._alphas.fillna(0.0, inplace=True) # 因子值不得为Nan
+        
         self._old_index = self._alphas.index
         super(MaximizeAlpha, self).__init__()
 
-    def to_cvxpy(self, current_weights):
+    def to_cvxpy(self, current_weights=None):
+        '''current_weights：pd.Series[Asset -> float] or dict[Asset -> float]
+        '''        
         self._make_variable(current_weights)
         self._alphas = self._alphas.reindex(self._new_index).fillna(0)
-        profit = self._alphas.values.T * self._new_weights  # 加权收益
+        profit = self._alphas.values.T * self.new_weights  # 加权收益
         return cvx.Maximize(cvx.sum(profit))

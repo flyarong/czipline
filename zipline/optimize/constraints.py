@@ -2,42 +2,25 @@
 限制模型
 """
 
-from abc import ABCMeta, abstractmethod
-import logbook
+import abc
+from six import with_metaclass
+
 import numpy as np
 import pandas as pd
-from collections import Iterable
 import cvxpy as cvx
 
-from .utils import check_series_or_dict, get_ix
+from collections import Iterable
+
+from .utils import get_ix, ensure_series
+
+import logbook
 logger = logbook.Logger('投资组合优化限制')
-__all__ = [
-    'NotConstrained',
-    'MaxGrossExposure',
-    'NetExposure',
-    'DollarNeutral',
-    'NetGroupExposure',
-    'PositionConcentration',
-    'FactorExposure',
-    'Pair',
-    'Basket',
-    'Frozen',
-    'ReduceOnly',
-    'LongOnly',
-    'ShortOnly',
-    'FixedWeight',
-    'CannotHold',
-    'NotExceed',
-    'NotLessThan',
-    'RiskModelExposure',
-]
+
 
 NotConstrained = 'NotConstrained'
 
 
-class BaseConstraint(object):
-    __metaclass__ = ABCMeta
-
+class BaseConstraint(with_metaclass(abc.ABCMeta, object)):
     def __init__(self):
         self.constraint_assets = None
 
@@ -46,25 +29,14 @@ class BaseConstraint(object):
         """
         return "%s()" % (self.__class__.__name__)
 
-    def gen_constraints(self,
-                        weight_var,
-                        weight_var_series=None,
-                        init_weights=None):
-        """
-        返回限制列表
-
-        Args
-        ----
+    @abc.abstractmethod
+    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
+        '''
         weight_var:权重变量
         weight_var_series:权重表达式序列(以assets为索引)
         init_weights:初始权重值序列(以assets为索引)
-        """
-        return self.to_cvxpy(weight_var, weight_var_series, init_weights)
-
-    @abstractmethod
-    def to_cvxpy(self, weight_var, weight_var_series, init_weights):
-        """子类完成具体表达式"""
-        pass
+        '''
+        raise NotImplementedError()
 
 
 class MaxGrossExposure(BaseConstraint):
@@ -95,7 +67,6 @@ class MaxGrossExposure(BaseConstraint):
 
     def to_cvxpy(self, weight_var, weight_var_series, init_weights):
         return [cvx.sum(cvx.abs(weight_var)) <= self.max_]
-        # return [cvx.norm(cvx.abs(weight_var), 2) <= self.max_]
 
 
 class NetExposure(BaseConstraint):
@@ -122,7 +93,7 @@ class NetExposure(BaseConstraint):
     """
 
     def __init__(self, min_, max_):
-        assert min_ < max_, '输入的最小值应小于最大值'
+        assert min_ <= max_, '输入的最小值应不大于最大值'
         self.min_ = min_
         self.max_ = max_
         super(NetExposure, self).__init__()
@@ -158,8 +129,6 @@ class DollarNeutral(BaseConstraint):
     """
 
     def __init__(self, tolerance=0.0001):
-        # 不应限制
-        # assert tolerance < 0.01, 'tolerance太大没有意义'
         self.tolerance = tolerance
         super(DollarNeutral, self).__init__()
 
@@ -259,20 +228,12 @@ class NetGroupExposure(BaseConstraint):
         # min_weights[group_label] = opt.NotConstrained 或
         # max_weights[group_label] = opt.NotConstrained
         # """
-        check_series_or_dict(labels, 'labels')
-        check_series_or_dict(min_weights, 'min_weights')
-        check_series_or_dict(max_weights, 'max_weights')
-        labels = pd.Series(labels)
-        min_weights = pd.Series(min_weights)
-        max_weights = pd.Series(max_weights)
-        # 现在可以不对称限定组
-        # assert min_weights.index.equals(max_weights.index), msg
-        self.labels = labels
-        self.min_weights = min_weights
-        self.max_weights = max_weights
+        self.labels = ensure_series(labels)
+        self.min_weights = ensure_series(min_weights)
+        self.max_weights = ensure_series(max_weights)
         self.etf_lookthru = etf_lookthru
         # 重写基类的constraint_assets属性
-        self.constraint_assets = labels.index
+        self.constraint_assets = self.labels.index
         super(NetGroupExposure, self).__init__()
 
     @classmethod
@@ -301,8 +262,7 @@ class NetGroupExposure(BaseConstraint):
                 Upper bound for exposure to any group.
         """
         # 依然要先检查类型是否正确(主要要使用unique方法)
-        check_series_or_dict(labels, 'labels')
-        labels = pd.Series(labels)
+        labels = ensure_series(labels)
         return cls(
             labels=labels,
             min_weights=pd.Series(index=labels.unique(), data=min_),
@@ -397,18 +357,15 @@ class PositionConcentration(BaseConstraint):
                  default_max_weight=0.0,
                  etf_lookthru=None):
         assert default_min_weight <= default_max_weight, '默然最小值必须小于等于默认最大值'
-        check_series_or_dict(min_weights, 'min_weights')
-        check_series_or_dict(max_weights, 'max_weights')
-        min_weights = pd.Series(min_weights)
-        max_weights = pd.Series(max_weights)
-        self.min_weights = min_weights
-        self.max_weights = max_weights
+
+        self.min_weights = ensure_series(min_weights)
+        self.max_weights = ensure_series(max_weights)
         self.default_min_weight = default_min_weight
         self.default_max_weight = default_max_weight
         self.etf_lookthru = etf_lookthru
 
         # 重写基类的constraint_assets属性
-        assets = min_weights.index.union(max_weights.index).unique()
+        assets = self.min_weights.index.union(self.max_weights.index).unique()
         self.constraint_assets = assets
         super(PositionConcentration, self).__init__()
 
@@ -494,11 +451,9 @@ class FactorExposure(BaseConstraint):
     """
 
     def __init__(self, loadings, min_exposures, max_exposures):
-        check_series_or_dict(min_exposures, 'min_exposures')
-        check_series_or_dict(max_exposures, 'max_exposures')
         self.loadings = loadings
-        self.min_exposures = pd.Series(min_exposures)
-        self.max_exposures = pd.Series(max_exposures)
+        self.min_exposures = ensure_series(min_exposures)
+        self.max_exposures = ensure_series(max_exposures)
 
         # 重写基类的constraint_assets属性
         self.constraint_assets = loadings.index
@@ -664,7 +619,6 @@ class ReduceOnly(BaseConstraint):
     asset：Asset
         不得增加头寸的资产
     """
-
     def __init__(self, asset_or_assets, max_error_display=10):
         # 如果输入单个资产，转换为可迭代对象
         if not isinstance(asset_or_assets, Iterable):

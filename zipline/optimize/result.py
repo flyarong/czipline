@@ -157,7 +157,7 @@ def run_diagnostics(objective, new_weights, cvx_objective, constraint_map):
     return info
 
 
-class OptimizationResult():
+class OptimizationResult(object):
     def __init__(self, prob, objective, old_weights, cvx_objective,
                  constraint_map):
         self.prob = prob

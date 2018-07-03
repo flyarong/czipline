@@ -1,21 +1,22 @@
-import logbook
 import numpy as np
 import pandas as pd
 from toolz import concat
 import cvxpy as cvx
 
-from .result import (InfeasibleConstraints, OptimizationFailed,
-                     OptimizationResult, UnboundedObjective)
+from .result import (InfeasibleConstraints, 
+                     OptimizationFailed,
+                     OptimizationResult, 
+                     UnboundedObjective)
 
+import logbook
 logger = logbook.Logger('投资组合优化')
-
-__all__ = ['calculate_optimal_portfolio', 'run_optimization']
 
 
 def _run(objective, constraints, current_weights):
     if current_weights is not None:
         if len(current_weights) == 0:
             current_weights = None
+    
     cvx_objective = objective.to_cvxpy(current_weights)
     new_weights = objective.new_weights
     new_weights_series = objective.new_weights_series
@@ -57,14 +58,19 @@ def run_optimization(objective, constraints, current_portfolio=None):
     zipline.optimize.calculate_optimal_portfolio()   
     """
     assert isinstance(constraints, list), 'constraints应该为列表类型'
-    problem, cvx_objective, constraint_map = _run(objective, constraints,
+    problem, cvx_objective, constraint_map = _run(objective, 
+                                                  constraints,
                                                   current_portfolio)
-    result = OptimizationResult(problem, objective, current_portfolio,
-                                cvx_objective, constraint_map)
+    result = OptimizationResult(problem, 
+                                objective,
+                                current_portfolio,
+                                cvx_objective,
+                                constraint_map)
     return result
 
 
-def calculate_optimal_portfolio(objective, constraints,
+def calculate_optimal_portfolio(objective, 
+                                constraints,
                                 current_portfolio=None):
     """
     计算给定目标及限制的投资组合最优权重
