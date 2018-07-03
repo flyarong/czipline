@@ -6,10 +6,11 @@ import pyfolio as pf
 
 
 def create_full_tear_sheet(self):
-    """附加DataFrame方法"""
+    """创建完整工作底稿(DataFrame扩展方法)"""
     returns, positions, transactions = pf.utils.extract_rets_pos_txn_from_zipline(
         self)
-    live_start_date = self.index[-int(len(self) / 4)]
+    loc = -int(len(self) / 4) if int(len(self) / 4) else -1
+    live_start_date = self.index[loc]
     pf.create_full_tear_sheet(
         returns,
         positions=positions,
@@ -32,9 +33,14 @@ def get_latest_backtest_info(dir_name='~/.backtest'):
         raise ValueError('在目录{}下，没有发现回测结果'.format(dir_name))
 
 
-def get_backtest(dir_name='~/.backtest'):
+def get_backtest(dir_name='~/.backtest', file_name=None):
     """获取最近的回测结果(数据框)"""
-    pref_file, _ = get_latest_backtest_info(dir_name)
+    if file_name is None:
+        pref_file, _ = get_latest_backtest_info(dir_name)
+    else:
+        assert isinstance(file_name, str)
+        assert file_name.endswith('.pkl'), '文件名必须带".pkl"扩展'
+        pref_file = os.path.join(dir_name, file_name)
     return pd.read_pickle(pref_file)
 
 
