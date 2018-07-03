@@ -124,7 +124,7 @@ from zipline.gens.sim_engine import MinuteSimulationClock
 from zipline.sources.benchmark_source import BenchmarkSource
 from zipline.zipline_warnings import ZiplineDeprecationWarning
 # # 增加运行优化放置订单部分
-from zipline.optimize import ObjectiveBase, calculate_optimal_portfolio
+from zipline.optimize import BaseObjective, calculate_optimal_portfolio
 
 # # 设置logbook显示本地时间
 logbook.set_datetime_format('local')

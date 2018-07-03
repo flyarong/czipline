@@ -1,4 +1,5 @@
 from .objectives import (
+    BaseObjective,
     TargetWeights, 
     MaximizeAlpha,
 )
