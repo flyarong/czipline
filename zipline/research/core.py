@@ -10,9 +10,7 @@ import pandas as pd
 
 from cswd.common.utils import data_root, ensure_list, sanitize_dates
 from zipline.utils.calendars import get_calendar
-# from zipline import run_algorithm
 from zipline.assets import Asset
-from zipline.assets._assets import Equity
 from zipline.data.bundles.core import load
 from zipline.data.data_portal import DataPortal
 from zipline.pipeline import Pipeline
@@ -79,25 +77,30 @@ def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
 
     list of Asset objects – The symbols that were requested.
     """
-    finder = bundle_data.asset_finder
     symbols_ = ensure_list(symbols_)
-    first_type = type(symbols_[0])
+    
+    allowed_dtype = [str, int, Asset]
+    
+    res = {0: [], 1: [], 2: []}
     for s in symbols_:
-        type_ = type(s)
-        if type_ != first_type:
-            raise TypeError('symbols_列表不得存在混合类型')
-    if first_type is Equity:
-        return symbols_
-    elif first_type is int:
-        symbols_ = [str(s).zfill(6) for s in symbols_]
-
+        try:
+            pos = allowed_dtype.index(type(s))
+            res[pos].append(s)
+        except ValueError as e:
+            raise Exception('{} is not str、int or zipline.assets.Asset'.format(s))
+    
     if symbol_reference_date is not None:
         asof_date = pd.Timestamp(symbol_reference_date, tz='UTC')
     else:
         asof_date = pd.Timestamp('today', tz='UTC')
-    res = finder.lookup_symbols(symbols_, asof_date)
-    # 返回的是列表
-    return res
+    
+    res[0] = finder.lookup_symbols(res[0], asof_date)
+    res[1] = finder.retrieve_all(res[1])
+
+    ret = res[2]
+    ret.extend(res[1])
+    ret.extend(res[0])
+    return ret
 
 
 def run_pipeline(pipe, start, end):
