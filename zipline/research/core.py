@@ -61,10 +61,10 @@ def to_tdates(start, end):
 
 def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
     """
-    Convert a string or a list of strings into Asset objects.
+    Convert a or a list of str and int into a list of Asset objects.
+    
     Parameters:	
-
-        symbols_ (String or iterable of strings.)
+        symbols_ (str, int or iterable of str and int)
             Passed strings are interpreted as ticker symbols and 
             resolved relative to the date specified by symbol_reference_date.
         symbol_reference_date (str or pd.Timestamp, optional)
@@ -79,9 +79,9 @@ def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
     """
     symbols_ = ensure_list(symbols_)
     
-    allowed_dtype = [str, int, Asset]
+    allowed_dtype = [str, int, Asset, Equity]
     
-    res = {0: [], 1: [], 2: []}
+    res = {0: [], 1: [], 2: [], 3: []}
     for s in symbols_:
         try:
             pos = allowed_dtype.index(type(s))
@@ -97,9 +97,9 @@ def symbols(symbols_, symbol_reference_date=None, handle_missing='log'):
     res[0] = finder.lookup_symbols(res[0], asof_date)
     res[1] = finder.retrieve_all(res[1])
 
-    ret = res[2]
-    ret.extend(res[1])
-    ret.extend(res[0])
+    ret = []
+    for s in res.values():
+        ret.extend(s)
     return ret
 
 
