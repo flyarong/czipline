@@ -10,7 +10,7 @@ import pandas as pd
 
 from cswd.common.utils import data_root, ensure_list, sanitize_dates
 from zipline.utils.calendars import get_calendar
-from zipline.assets import Asset
+from zipline.assets import Asset, Equity
 from zipline.data.bundles.core import load
 from zipline.data.data_portal import DataPortal
 from zipline.pipeline import Pipeline
